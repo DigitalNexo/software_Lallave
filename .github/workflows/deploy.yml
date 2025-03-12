@@ -1,0 +1,27 @@
+name: Deploy a la VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar el repositorio
+        uses: actions/checkout@v3
+
+      - name: Conectar a la VPS y actualizar código
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            cd C:\Users\Administrator\software_Lallave
+            git pull origin main
+            npm install
+            npx tsc
+            net stop software_lallave
+            net start software_lallave
