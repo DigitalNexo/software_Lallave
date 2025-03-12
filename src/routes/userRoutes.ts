@@ -26,6 +26,38 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     }
 });
 
+// 🔍 Obtener todos los usuarios con filtros y paginación (Solo gestores pueden acceder)
+router.get("/", authenticateJWT, authorizeRole(["gestor"]), async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { nombre, email, page = 1, limit = 10 } = req.query;
+
+        const pageNumber = parseInt(page as string) || 1;
+        const limitNumber = parseInt(limit as string) || 10;
+        const offset = (pageNumber - 1) * limitNumber;
+
+        const whereClause: any = {};
+        if (nombre) whereClause.nombre = { $like: `%${nombre}%` };
+        if (email) whereClause.email = { $like: `%${email}%` };
+
+        const { rows: users, count } = await User.findAndCountAll({
+            where: whereClause,
+            attributes: { exclude: ["password"] }, // No devolver contraseñas
+            limit: limitNumber,
+            offset,
+        });
+
+        res.json({
+            total: count,
+            page: pageNumber,
+            totalPages: Math.ceil(count / limitNumber),
+            users,
+        });
+    } catch (error) {
+        console.error("Error al obtener usuarios:", error);
+        res.status(500).json({ error: "Error en el servidor." });
+    }
+});
+
 // 🔹 Obtener todos los usuarios (Solo "gestor" puede verlos)
 router.get("/", authenticateJWT, authorizeRole(["gestor"]), async (req: Request, res: Response): Promise<void> => {
     try {

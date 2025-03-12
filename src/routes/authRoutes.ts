@@ -2,13 +2,16 @@ import { Router, Request, Response } from "express";
 import { authenticateJWT } from "../middleware/authMiddleware";
 import User from "../models/User";
 import { login, refreshToken, logout } from "../controllers/authController";
+import { loginLimiter } from "../middleware/rateLimiter"; // Importa el limitador
 
 const router = Router();
 
-// Endpoint para iniciar sesión
-router.post("/login", login);
+// 🔹 Aplicar el limitador en la ruta de login
+router.post("/login", loginLimiter, login);
+
 // Endpoint para refrescar token
 router.post("/refresh", refreshToken);
+
 // Endpoint para cerrar sesión
 router.post("/logout", logout);
 

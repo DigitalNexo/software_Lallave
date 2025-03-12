@@ -1,46 +1,56 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import sequelize from "./database"; // Importamos la conexión a la base de datos
-import User from "./models/User"; // Importamos el modelo de usuario
+import sequelize from "./database";
 import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
+import { apiLimiter } from "./middleware/rateLimiter"; // 🔹 Importamos el rate limiter
 
-dotenv.config(); // Carga las variables de entorno
+dotenv.config();
 
 const app = express();
 
-// Middleware
+// 🔹 Middleware global UTF-8
 app.use(express.json());
-app.use(cors());
-app.use("/auth", authRoutes);
+app.use(
+    cors({
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
+app.use((req, res, next) => {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    next();
+});
 
-// Verificar conexión a la base de datos antes de cargar rutas
-(async () => {
+// ✅ Aplicar Rate Limiting a TODAS las rutas de la API
+app.use(apiLimiter);
+
+// ✅ Inicializar servidor
+const startServer = async () => {
     try {
         await sequelize.authenticate();
         console.log("✅ Conectado a PostgreSQL correctamente");
 
-        await sequelize.sync({ alter: true }); // ✅ Mantiene los datos, solo ajusta la estructura si hay cambios
+        await sequelize.sync({ alter: true });
         console.log("✅ Base de datos sincronizada con Sequelize");
 
-        // Cargar rutas después de la conexión a la base de datos
+        app.use("/auth", authRoutes);
         app.use("/usuarios", userRoutes);
 
-        // Ruta de prueba
         app.get("/", (req: Request, res: Response) => {
-            res.send("¡El backend está funcionando! 🚀");
+            res.send("¡El backend está funcionando correctamente! 🚀");
         });
 
-        app.use("/auth", authRoutes);
-        // Iniciar el servidor solo si la conexión fue exitosa
         const PORT = process.env.PORT || 3000;
         app.listen(PORT, () => {
             console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
         });
-
     } catch (error) {
         console.error("❌ Error en la inicialización del servidor:", error);
-        process.exit(1); // Salir del proceso si hay un error crítico
+        process.exit(1);
     }
-})();
+};
+
+startServer();
